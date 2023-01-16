@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.ZiroomProcessInstanceMapper">
+
+    <select id="queryProcessInstanceListPaging" resultType="org.apache.dolphinscheduler.dao.entity.ProcessInstance">
+        select
+        pro.id,
+        pro.process_definition_code,
+        pro.command_type,
+        pro.name,
+        pro.state,
+        pro.start_date_time,
+        pro.end_date_time,
+        pro.start_time,
+        pro.end_time,
+        pro.run_times,
+        pro.user_name,
+        pro.project_name,
+        pro.state_name,
+        pro.schedule_date_time
+        from
+        (select
+        instance.id,
+        instance.process_definition_code,
+        instance.command_type,
+        instance.executor_id,
+        instance.name,
+        instance.state,
+        instance.start_time as start_date_time,
+        instance.end_time as end_date_time,
+        date_format(instance.start_time,'%Y-%m-%d %H:%i:%s') as start_time,
+        date_format(instance.end_time,'%Y-%m-%d %H:%i:%s') as end_time,
+        instance.run_times,
+        u.user_name,
+        p.name as project_name,
+        case
+        WHEN instance.command_type in (9) and instance.state in(7) THEN
+        '停止'
+        WHEN instance.state in (6) THEN
+        '失败'
+        WHEN instance.state in (0,1,8,10,11) THEN
+        '执行中'
+        WHEN instance.state in(2,3) THEN
+        '暂停'
+        WHEN instance.state in(4,5) THEN
+        '停止'
+        WHEN instance.state in(7) THEN
+        '完成'
+        WHEN instance.state in(9) THEN
+        '未知'
+        ELSE
+        '未知'
+        END as state_name,
+        date_format(instance.schedule_time,'%Y-%m-%d %H:%i:%s') as schedule_date_time
+        from t_ds_process_instance instance
+        join t_ds_process_definition define
+        ON instance.process_definition_code = define.code
+        left join t_ds_user u
+        on instance.executor_id = u.id
+        join t_ds_project p
+        on define.project_code = p.id
+        where instance.is_sub_process=0
+        and define.project_code = #{projectCode} and LOCATE("COMPLEMENT_DATA",instance.history_cmd)=0
+        <if test="processDefinitionCode != 0">
+            and instance.process_definition_code = #{processDefinitionCode}
+        </if>
+        <if test="startTime != null ">
+            and instance.start_time > #{startTime} and instance.start_time <![CDATA[ <=]]> #{endTime}
+        </if>
+        <if test="executorId != 0">
+            and instance.executor_id = #{executorId}
+        </if>
+        order by instance.start_time desc
+        ) pro  where 1=1 <if test="stateVal !=null and stateVal!='' and stateVal!='全部'">
+        and  pro.state_name=#{stateVal}
+    </if>
+
+    </select>
+
+    <select id="complementProcessInstanceListPaging"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessInstance">
+        select
+        pro.id,
+        pro.process_definition_code,
+        pro.command_type,
+        pro.name,
+        pro.state,
+        pro.start_date_time,
+        pro.end_date_time,
+        pro.start_time,
+        pro.end_time,
+        pro.run_times,
+        pro.user_name,
+        pro.project_name,
+        pro.state_name,
+        pro.schedule_date_time
+        from
+        (select
+        instance.id,
+        instance.process_definition_code,
+        instance.command_type,
+        instance.executor_id,
+        instance.name,
+        instance.state,
+        instance.start_time as start_date_time,
+        instance.end_time as end_date_time,
+        date_format(instance.start_time,'%Y-%m-%d %H:%i:%s') as start_time,
+        date_format(instance.end_time,'%Y-%m-%d %H:%i:%s') as end_time,
+        instance.run_times,
+        u.user_name,
+        p.name as project_name,
+        case
+        WHEN instance.command_type in (9) and instance.state in(7) THEN
+        '停止'
+        WHEN instance.state in (6) THEN
+        '失败'
+        WHEN instance.state in (0,1,8,10,11) THEN
+        '执行中'
+        WHEN instance.state in(2,3) THEN
+        '暂停'
+        WHEN instance.state in(4,5) THEN
+        '停止'
+        WHEN instance.state in(7) THEN
+        '完成'
+        WHEN instance.state in(9) THEN
+        '未知'
+        ELSE
+        '未知'
+        END as state_name,
+        date_format(instance.schedule_time,'%Y-%m-%d %H:%i:%s') as schedule_date_time
+        from t_ds_process_instance instance
+        join t_ds_process_definition define
+        ON instance.process_definition_code = define.code
+        left join t_ds_user u
+        on instance.executor_id = u.id
+        join t_ds_project p
+        on define.project_code = p.code
+        where instance.is_sub_process=0
+        and define.project_code = #{projectCode} and LOCATE("COMPLEMENT_DATA",instance.history_cmd)>0
+        <if test="processDefinitionCode != 0">
+            and instance.process_definition_code = #{processDefinitionCode}
+        </if>
+        <if test="startTime != null ">
+            and instance.schedule_time >= #{startTime} and instance.schedule_time <![CDATA[ <=]]> #{endTime}
+        </if>
+        <if test="executorId != 0">
+            and instance.executor_id = #{executorId}
+        </if>
+        <choose>
+            <when test="taskorder==0">order by instance.start_time desc</when>
+            <when test="taskorder==1">order by instance.start_time asc</when>
+        </choose>
+        ) pro  where 1=1 <if test="stateVal !=null and stateVal!='' and stateVal!='全部'">
+        and pro.state_name=#{stateVal}
+    </if>
+        <choose>
+            <when test="startorder==0">order by pro.schedule_date_time desc </when>
+            <when test="startorder==1">order by pro.schedule_date_time asc</when>
+            <when test="endorder==0">order by pro.end_time desc</when>
+            <when test="endorder==1">order by pro.end_time asc</when>
+            <when test="runorder==0">order by pro.run_times desc</when>
+            <when test="runorder==1">order by pro.run_times asc</when>
+        </choose>
+    </select>
+</mapper>

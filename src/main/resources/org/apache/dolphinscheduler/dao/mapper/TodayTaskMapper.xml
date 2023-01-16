@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.ZiroomTodayTaskMapper">
+
+    <select id="queryTodaySchedulerInfo" resultType="org.apache.dolphinscheduler.dao.entity.TodaySchedulerInfo">
+        select
+        count(1) as today_schedule_num,
+        sum(if(runtime_istoday = 1,1,0)) as  exe_num,
+        sum(if(runtime_istoday = 1 and isfailure = 1,1,0))  as failure_num
+        from
+        (select
+        tt.isonline,
+        if(tt_dpi.state=6, 1, 0) isfailure,
+        if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d') ,1,0) as runtime_istoday,
+        tt.code
+        from
+        (select
+        p.release_state as isonline,
+        p.release_state as task_state,
+        (select max(id)
+        from t_ds_process_instance as dpi
+        where dpi.process_definition_code = p.code
+        group by dpi.process_definition_code ) as instance_id,
+        p.code
+        from
+        (select * from t_ds_project t
+        where t.id in
+        (select project_id
+        from t_ds_relation_project_user
+        <if test="loginUserId != 0">
+            where user_id = #{loginUserId}
+        </if>
+
+        union select id as project_id
+        from t_ds_project
+        <if test="loginUserId != 0">
+            where user_id = #{loginUserId}
+        </if>
+
+        )
+        and name != 'common'
+        ) pj
+        join
+        t_ds_process_definition p
+        on pj.code = p.project_code
+        left join
+        t_ds_process_definition_io pio
+        on  p.code = pio.process_definition_code
+
+        where 1=1
+        and ifnull(pio.io_type,1) = 1
+        )  tt
+        left join t_ds_process_instance tt_dpi
+        on tt.instance_id = tt_dpi.id and tt.code = tt_dpi.process_definition_code) ttt
+        where runtime_istoday = 1
+    </select>
+
+</mapper>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.ProcessCreateTypeMapper">
+    <insert id="insertItem" parameterType="org.apache.dolphinscheduler.dao.entity.ProcessCreateType" useGeneratedKeys="true" keyProperty="id">
+        insert into  bz_zr_process_type(process_id, process_type, process_data_structure)
+        values(#{process_id},#{processCreateType},#{process_data_structure})
+    </insert>
+
+
+    <delete id="deleteItemByProcessID" parameterType="long">
+        delete from bz_zr_process_type where process_id = #{process_id}
+    </delete>
+
+
+
+    <select id="selectItemByProcessID"  resultMap="ProcessCreateType">
+        select id,
+               process_id,
+               process_type,
+               process_data_structure
+        from bz_zr_process_type
+        where process_id = #{process_id}
+    </select>
+
+    <!-- 自定义reusltMap -->
+    <resultMap id="ProcessCreateType" type="org.apache.dolphinscheduler.dao.entity.ProcessCreateType">
+        <result column="process_id" property="process_id" />
+        <result column="process_type" property="processCreateType" />
+        <result column="process_data_structure" property="process_data_structure" />
+    </resultMap>
+
+</mapper>

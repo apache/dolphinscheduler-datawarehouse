@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.TaskMapper">
+
+    <select id="queryTaskListPaging" resultType="org.apache.dolphinscheduler.dao.entity.Task">
+        select
+        tt.isonline,
+        case
+        WHEN tt_dpi.state in (6) THEN
+        '失败'
+        WHEN tt_dpi.state in (0,1,8,10,11)  THEN
+        '执行中'
+        WHEN tt_dpi.state in(2,3)  THEN
+        '暂停'
+        WHEN tt_dpi.state in(4,5)  THEN
+        '停止'
+        WHEN tt_dpi.state in(7)  THEN
+        '完成'
+        WHEN tt_dpi.state in(9)  THEN
+        '未知'
+        ELSE
+        '未知'
+        END as state_name,
+        if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d') and tt_dpi.state in (6),1,0) as is_red,
+        task_name,
+        table_name,
+        date_format(tt_dpi.end_time,'%Y-%m-%d %H:%i:%s') as end_time,
+        user_name,
+        tt_dpi.state as runner_state,
+        task_state,
+        project_id,
+        tt.project_name,
+        user_id,
+        tt.process_definition_id,
+        tt_dpi.id as process_instace_id,
+        tt_dpi.command_type,
+        bz_zpt.process_type as process_type
+        -- ,tt.receivers_cc,
+        -- tt.receivers
+        from
+            (select
+            if(p.release_state = 1,1,0) as isonline,
+            p.name as task_name,
+            pio.io_name as table_name,
+            u.user_name,
+            p.release_state as task_state,
+            pj.name as project_name,
+            (select max(id)
+            from t_ds_process_instance as dpi
+            where dpi.process_definition_code = p.code
+            group by dpi.process_definition_code ) as instance_id,
+            p.version,
+            p.project_code as project_id,
+            p.user_id,
+            p.code as process_definition_id,
+            pio.process_definition_version,
+            pio.io_type,
+            p.create_time as process_create_time
+
+            -- ,p.receivers,
+            -- p.receivers_cc
+            from
+            (
+                select
+                    id,
+                    name,
+                    code,
+                    description,
+                    user_id,
+                    flag,
+                    create_time,
+                    update_time
+                from t_ds_project t
+                where t.id in
+                (
+                select project_id
+                    from t_ds_relation_project_user
+                    <if test="loginUserId != 0">
+                        where user_id = #{loginUserId}
+                    </if>
+                union
+                    select id as project_id
+                    from t_ds_project
+                    <if test="loginUserId != 0">
+                        where user_id = #{loginUserId}
+                    </if>
+                )
+                and name != 'common'
+            ) pj
+     join
+     t_ds_process_definition p
+        on pj.code = p.project_code
+     left join
+      t_ds_process_definition_io pio
+        on p.code = pio.process_definition_code
+    join t_ds_user u
+        on p.user_id = u.id
+     where 1=1
+     -- and pio.io_type = 1
+        and ifnull(pio.io_type,1) = 1
+
+    <if test="searchVal != null and searchVal != ''">
+        and  p.name like concat('%', #{searchVal}, '%')
+    </if>
+    <if test="createUserName != null and createUserName != ''">
+        and  u.user_name like concat('%', #{createUserName}, '%')
+    </if>
+   )  tt
+        left join t_ds_process_instance tt_dpi
+        on tt.instance_id = tt_dpi.id and tt.process_definition_id = tt_dpi.process_definition_code
+        left join  bz_zr_process_type as bz_zpt on tt.process_definition_id =  bz_zpt.process_id
+        order by
+        if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) desc,
+        CASE
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in (6) THEN
+        1
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in (0,1,8,10,11)  THEN
+        2
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in (2,3)  THEN
+        3
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in (4,5)  THEN
+        4
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in(7)  THEN
+        5
+        WHEN if(date_format(tt_dpi.start_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d'),1,0) and tt_dpi.state in(9)  THEN
+        6
+        ELSE
+        6
+        END asc,
+        tt_dpi.end_time desc
+    </select>
+
+
+    <select id="querySimpleTaskByProcessId" resultType="org.apache.dolphinscheduler.dao.entity.SimpleTask">
+        select
+            p.name as taskName,
+            pio.io_name as tableName,
+            u.user_name as userName
+        from
+            (
+                select
+                    id,
+                    name,
+                    code,
+                    description,
+                    user_id,
+                    flag,
+                    create_time,
+                    update_time
+                from
+                    t_ds_project t
+                where
+                        t.id in (
+                        select
+                            project_id
+                        from
+                            t_ds_relation_project_user
+                        union
+                        select
+                            id as project_id
+                        from
+                            t_ds_project
+                    )
+                  and name != 'common'
+            ) pj
+                join t_ds_process_definition p on pj.code = p.project_code
+                left join t_ds_process_definition_io pio on p.code = pio.process_definition_code
+                join t_ds_user u on p.user_id = u.id
+        where
+            1 = 1
+          and ifnull(pio.io_type, 1) = 1
+          and code = #{processId}
+    </select>
+
+    <select id="selectCounts" resultType="com.datawarehouse.be.pojo.vo.ProcessStateVo">
+        SELECT id,state
+        FROM t_ds_process_instance
+        WHERE id=(
+        SELECT MAX(id)
+        FROM t_ds_process_instance where process_definition_id=#{processDefinitionId}
+        and LOCATE("COMPLEMENT_DATA",history_cmd)>0)
+        AND LOCATE("COMPLEMENT_DATA",history_cmd)>0 AND process_definition_id=#{processDefinitionId}
+    </select>
+
+    <select id="selectcommoncounts" resultType="java.lang.Integer">
+        select count(*) from t_ds_command where process_definition_id=#{processDefinitionId} and command_type=5
+    </select>
+
+</mapper>

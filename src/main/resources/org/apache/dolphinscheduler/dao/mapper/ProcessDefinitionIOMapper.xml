@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.ProcessDefinitionIOMapper">
+    <sql id="baseSql">
+        id,process_definition_code,
+        process_definition_version,io_type,io_name,create_time,task_id, task_name,process_definition_name
+    </sql>
+    <select id="verifyByDefineIdAndVersionAndType"
+            resultType="java.lang.Integer">
+        select
+        count(1)
+        from t_ds_process_definition_io
+        WHERE process_definition_code = #{processDefinitionId}
+        and process_definition_version = #{processDefinitionVersion}
+        and io_type = #{ioType}
+    </select>
+    <select id="queryByIOTypeAndIONames" resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_type = #{ioType} and io_name in
+        <foreach collection="ioNames" item="ioName" open="(" separator="," close=")">
+            #{ioName}
+        </foreach>
+    </select>
+
+    <select id="queryByIOType" resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_type = #{ioType}
+    </select>
+
+    <delete id="deleteByDefineId">
+        delete from t_ds_process_definition_io where process_definition_code = #{processDefinitionCode}
+    </delete>
+
+    <select id="queryByProcessDefinitionIdAndIoType"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_type = #{ioType} and process_definition_code = #{processDefinitionCode}
+    </select>
+
+    <select id="queryByIOName"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_name = #{ioName}
+    </select>
+
+    <select id="queryByIONameAndIoType"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_name = #{ioName} and io_type = #{ioType}
+    </select>
+
+    <select id="queryByIoNamesAndIoType"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_type = #{ioType} and io_name in
+        <foreach collection="ioNames" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="queryByProcessIdsAndIoType"
+            resultType="org.apache.dolphinscheduler.dao.entity.ProcessDefinitionIO">
+        select
+        <include refid="baseSql"/>
+        from t_ds_process_definition_io
+        WHERE io_type = #{ioType} and process_definition_code in
+        <foreach collection="processIds" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+</mapper>
