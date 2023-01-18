@@ -41,3 +41,16 @@ jobs:
           for file in $(find . -name "*.md"); do
             markdown-link-check -c .dlc.json -q "$file"
           done
+  result:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [license, dead-link]
+    if: always()
+    steps:
+      - name: Status
+        run: |
+          if [[ ${{ needs.license.result }} != 'success' || ${{ needs.dead-link.result }} != 'success' ]]; then
+            echo "Build Failed!"
+            exit -1
+          fi
+
